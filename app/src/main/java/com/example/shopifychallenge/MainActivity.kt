@@ -3,18 +3,15 @@ package com.example.shopifychallenge
 import android.graphics.BitmapFactory
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
-import androidx.recyclerview.widget.DividerItemDecoration
+import android.view.Menu
+import android.view.MenuItem
+import android.widget.Toast
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import org.jetbrains.anko.doAsync
-import org.jetbrains.anko.doAsyncResult
 import org.jetbrains.anko.uiThread
-import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URL
-import java.util.*
 import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity() {
@@ -33,6 +30,8 @@ class MainActivity : AppCompatActivity() {
         gameProductsAdapter = ProductsAdapter(gameProductsArray, recyclerView)
         recyclerView.adapter = gameProductsAdapter
 
+        setSupportActionBar(findViewById(R.id.toolbar))
+
         doAsync {
             var jsonString = URL("https://shopicruit.myshopify.com/admin/products.json?page=1&access_token=c32313df0d0ef512ca64d5b336a0d7c6").readText()
             val productsObject = JSONObject(jsonString)
@@ -45,15 +44,39 @@ class MainActivity : AppCompatActivity() {
                 productArray.add(Product(productObject.getInt("id"), productObject.getString("title"), bitmap))
             }
             uiThread {
-                Shuffle(10)
-                gameProductsAdapter.notifyDataSetChanged()
+                Shuffle(20)
             }
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.toolbar_menu,menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
+        R.id.action_settings -> {
+            // User chose the "Print" item
+            Toast.makeText(this,"Settings action",Toast.LENGTH_LONG).show()
+            true
+        }
+        R.id.action_shuffle ->{
+            Shuffle(10)
+            true
+        }
+
+        else -> {
+            // If we got here, the user's action was not recognized.
+            // Invoke the superclass to handle it.
+            super.onOptionsItemSelected(item)
         }
     }
 
     fun Shuffle(numberOfCards : Int) {
 
         val randomProducts = ArrayList<Int>()
+
+        gameProductsAdapter.reset()
 
         gameProductsArray.clear()
         productArray.shuffle()
@@ -65,10 +88,11 @@ class MainActivity : AppCompatActivity() {
         randomProducts.shuffle()
 
         for (i in 0 until numberOfCards/2) {
-            gameProductsArray.add(productArray[i])
-            gameProductsArray.add(productArray[i])
+            gameProductsArray.add(Product(productArray[i].id, productArray[i].title, productArray[i].imgBitmap))
+            gameProductsArray.add(Product(productArray[i].id, productArray[i].title, productArray[i].imgBitmap))
         }
 
         gameProductsArray.shuffle()
+        gameProductsAdapter.notifyDataSetChanged()
     }
 }

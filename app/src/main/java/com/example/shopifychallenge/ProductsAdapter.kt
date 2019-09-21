@@ -12,7 +12,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
+import androidx.annotation.IntegerRes
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.card_layout.view.*
 
 class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: RecyclerView) : RecyclerView.Adapter<ProductsAdapter.ViewHolder>() {
@@ -35,8 +37,8 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
         holder.bindItems(products[holder.adapterPosition])
 
         holder.itemView.setOnClickListener {
-            if (holder.itemView.tag == "back") {
-                flipCardToFront(holder.itemView)
+            if (products[holder.adapterPosition].side == "back") {
+                flipCardToFront(holder.itemView, products[holder.adapterPosition])
                 if (pick1 == -1 && pick2 == -1) {
                     pick1 = holder.adapterPosition
                 } else if (pick2 == -1) {
@@ -48,13 +50,18 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
                 if (products[pick1].id == products[pick2].id) {
 
                 } else {
-                    flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick1)!!.itemView)
-                    flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick2)!!.itemView)
+                    flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick1)?.itemView, products[pick1])
+                    flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick2)?.itemView, products[pick2])
                 }
                 pick1 = -1
                 pick2 = -1
             }
         }
+    }
+
+    fun reset() {
+        pick1 = -1
+        pick2 = -1
     }
 
     /**
@@ -64,45 +71,50 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
         return products.size
     }
 
-    fun flipCardToFront(view: View) {
-        val oa1 = ObjectAnimator.ofFloat(view, "scaleX", 1f, 0f)
-        val oa2 = ObjectAnimator.ofFloat(view, "scaleX", 0f, 1f)
-        oa1.duration = 200
-        oa2.duration = 200
-        oa1.interpolator = DecelerateInterpolator()
-        oa2.interpolator = AccelerateDecelerateInterpolator()
-        oa1.addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                super.onAnimationEnd(animation)
-                view.tag = "front"
-                view.title.visibility = View.VISIBLE
-                view.image.visibility = View.VISIBLE
-                view.backImage.visibility = View.GONE
-                oa2.start()
-            }
-        })
-        oa1.start()
+    fun flipCardToFront(view: View?, product: Product) {
+        product.side = "front"
+        if (view != null) {
+            val oa1 = ObjectAnimator.ofFloat(view, "scaleX", 1f, 0f)
+            val oa2 = ObjectAnimator.ofFloat(view, "scaleX", 0f, 1f)
+            oa1.duration = 200
+            oa2.duration = 200
+            oa1.interpolator = DecelerateInterpolator()
+            oa2.interpolator = AccelerateDecelerateInterpolator()
+            oa1.addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    super.onAnimationEnd(animation)
+                    view.title.visibility = View.VISIBLE
+                    view.image.visibility = View.VISIBLE
+                    view.backImage.visibility = View.GONE
+                    oa2.start()
+                }
+            })
+            oa1.start()
+        }
     }
 
-    fun flipCardToBack(view: View) {
-        val oa1 = ObjectAnimator.ofFloat(view, "scaleX", 1f, 0f)
-        val oa2 = ObjectAnimator.ofFloat(view, "scaleX", 0f, 1f)
-        oa1.duration = 200
-        oa2.duration = 200
-        oa1.interpolator = DecelerateInterpolator()
-        oa2.interpolator = AccelerateDecelerateInterpolator()
-        oa1.addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                super.onAnimationEnd(animation)
-                view.tag = "back"
-                view.backImage.visibility = View.VISIBLE
-                view.title.visibility = View.GONE
-                view.image.visibility = View.GONE
-                oa2.start()
-            }
-        })
-        oa1.startDelay = 1000
-        oa1.start()
+    fun flipCardToBack(view: View?, product: Product) {
+        product.side = "back"
+        if (view != null) {
+            val oa1 = ObjectAnimator.ofFloat(view, "scaleX", 1f, 0f)
+            val oa2 = ObjectAnimator.ofFloat(view, "scaleX", 0f, 1f)
+            oa1.duration = 200
+            oa2.duration = 200
+            oa1.interpolator = DecelerateInterpolator()
+            oa2.interpolator = AccelerateDecelerateInterpolator()
+            oa1.addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    super.onAnimationEnd(animation)
+                    product.side = "back"
+                    view.backImage.visibility = View.VISIBLE
+                    view.title.visibility = View.GONE
+                    view.image.visibility = View.GONE
+                    oa2.start()
+                }
+            })
+            oa1.startDelay = 1000
+            oa1.start()
+        }
     }
 
     /**
@@ -113,7 +125,15 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
         fun bindItems(product: Product) {
             itemView.title.text=product.title
             itemView.image.setImageBitmap(product.imgBitmap)
-            itemView.tag = "back"
+            if (product.side == "back") {
+                itemView.backImage.visibility = View.VISIBLE
+                itemView.title.visibility = View.GONE
+                itemView.image.visibility = View.GONE
+            } else {
+                itemView.backImage.visibility = View.GONE
+                itemView.title.visibility = View.VISIBLE
+                itemView.image.visibility = View.VISIBLE
+            }
         }
     }
 
