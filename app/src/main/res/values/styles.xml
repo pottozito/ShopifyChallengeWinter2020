@@ -5,7 +5,7 @@
         <!-- Customize your theme here. -->
         <item name="colorPrimary">#43467F</item>
         <item name="colorPrimaryDark">#1C2260</item>
-        <item name="colorAccent">#50B83C</item>
+        <item name="colorAccent">#00044C</item>
     </style>
 
     <style name="ToolBarStyle" parent="Theme.AppCompat">
