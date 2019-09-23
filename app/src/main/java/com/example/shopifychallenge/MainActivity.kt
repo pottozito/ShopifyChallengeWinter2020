@@ -5,10 +5,12 @@ import android.graphics.BitmapFactory
 import android.opengl.Visibility
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.*
+import androidx.annotation.IntegerRes
 import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -16,12 +18,14 @@ import com.google.android.material.snackbar.Snackbar
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.uiThread
 import org.json.JSONObject
+import org.w3c.dom.Text
 import java.net.URL
 import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity() {
 
     lateinit var gameProductsAdapter: ProductsAdapter
+    lateinit var scoreView : TextView
 
     val productArray = ArrayList<Product>()
     val gameProductsArray = ArrayList<Product>()
@@ -33,15 +37,22 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        //Set up RecyclerView and corresponding adapter
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
         recyclerView.layoutManager = GridLayoutManager(this, 8)
         gameProductsAdapter = ProductsAdapter(gameProductsArray, recyclerView)
         recyclerView.adapter = gameProductsAdapter
 
+        //Loading animation when fetching JSON
         val loadingPanel = findViewById<RelativeLayout>(R.id.loadingPanel)
 
+        scoreView = findViewById<TextView>(R.id.score)
+        scoreView.text = "Score : 0"
+
+        //Custom topBar
         setSupportActionBar(findViewById(R.id.toolbar))
 
+        //Fetch JSON off main thread
         doAsync {
             var jsonString = URL("https://shopicruit.myshopify.com/admin/products.json?page=1&access_token=c32313df0d0ef512ca64d5b336a0d7c6").readText()
             val productsObject = JSONObject(jsonString)
@@ -53,6 +64,7 @@ class MainActivity : AppCompatActivity() {
                 val bitmap = BitmapFactory.decodeStream(URL(imageSrc).openConnection().getInputStream())
                 productArray.add(Product(productObject.getInt("id"), productObject.getString("title"), bitmap))
             }
+            //When finished
             uiThread {
                 loadingPanel.visibility = View.GONE
                 Shuffle(cards)
@@ -60,11 +72,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    //For custom topBar
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.toolbar_menu,menu)
         return super.onCreateOptionsMenu(menu)
     }
 
+    //Custom topBar item setup
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
         R.id.action_settings -> {
             // User chose the "Print" item
@@ -77,14 +91,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         else -> {
-            // If we got here, the user's action was not recognized.
-            // Invoke the superclass to handle it.
             super.onOptionsItemSelected(item)
         }
     }
 
+    //Shuffle new random deck
     fun Shuffle(numberOfCards : Int) {
 
+        scoreView.text = "Score : 0"
+
+        //ArrayList for new random deck
         val randomProducts = ArrayList<Int>()
 
         gameProductsAdapter.reset()
@@ -92,12 +108,14 @@ class MainActivity : AppCompatActivity() {
         gameProductsArray.clear()
         productArray.shuffle()
 
+        //Get list of random products
         for (i in 0 until productArray.size) {
             randomProducts.add(i)
         }
 
         randomProducts.shuffle()
 
+        //Add pairs depending on match size
         for (i in 0 until numberOfCards/matches) {
             for (j in 0 until matches) {
                 gameProductsArray.add(Product(productArray[i].id, productArray[i].title, productArray[i].imgBitmap))
@@ -108,6 +126,7 @@ class MainActivity : AppCompatActivity() {
         gameProductsAdapter.notifyDataSetChanged()
     }
 
+    //Build and show dialog for user settings input options
     fun ShowSettingsDialog() {
         val builder = AlertDialog.Builder(this)
 
@@ -123,18 +142,15 @@ class MainActivity : AppCompatActivity() {
         matchesSeekBar.min = 2
         matchesSeekBar.max = 4
         matchesSeekBar.progress = matches
-        matchesSeekBar.incrementProgressBy(1)
 
         matchesText.text = Integer.toString(matches)
 
         matchesSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekbar: SeekBar?, i: Int, b: Boolean) {
                 matchesText.text = Integer.toString(i)
-                cardsSeekBar.max = 0
-                cardsSeekBar.max = 50 * matchesSeekBar.progress
                 cardsSeekBar.min = matchesSeekBar.progress
+                cardsSeekBar.max = 50 * matchesSeekBar.progress
                 cardsSeekBar.progress = matchesSeekBar.progress
-                cardsSeekBar.incrementProgressBy(matchesSeekBar.progress)
             }
             override fun onStopTrackingTouch(p0: SeekBar?) {
 
@@ -148,14 +164,13 @@ class MainActivity : AppCompatActivity() {
         cardsSeekBar.min = matchesSeekBar.progress
         cardsSeekBar.max = 50 * matchesSeekBar.progress
         cardsSeekBar.setProgress(cards)
-        cardsSeekBar.incrementProgressBy(matchesSeekBar.progress)
 
-        cardsText.text = Integer.toString(matchesSeekBar.progress)
+        cardsText.text = Integer.toString(cards)
 
         cardsSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekbar: SeekBar?, i: Int, b: Boolean) {
                 var progress = i / matchesSeekBar.progress;
-                progress = progress * matchesSeekBar.progress;
+                progress *= matchesSeekBar.progress;
                 cardsText.text = Integer.toString(progress)
             }
             override fun onStopTrackingTouch(p0: SeekBar?) {
@@ -169,7 +184,7 @@ class MainActivity : AppCompatActivity() {
 
         builder.setTitle("Customize New Game")
         builder.setPositiveButton("Shuffle!") { _, _ ->
-            cards = cardsSeekBar.progress
+            cards = (cardsSeekBar.progress / matchesSeekBar.progress) * matchesSeekBar.progress
             matches = matchesSeekBar.progress
             Shuffle(cards)
         }
@@ -180,10 +195,11 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    fun ShowVictory() {
+    //On victory dialog screen
+    fun ShowVictory(score : Int) {
         val builder = AlertDialog.Builder(this)
 
-        builder.setTitle("You Win!")
+        builder.setTitle("You Win! Final score is $score")
         builder.setPositiveButton("Play Again") { _, _ ->
             Shuffle(cards)
         }

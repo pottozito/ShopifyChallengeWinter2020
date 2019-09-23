@@ -26,23 +26,21 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
     var cardsFlipped = 0
     var matches  = 0
     var matchesMade = 0
+    var canFlip = true
+    var score = 0
 
-    /**
-     * Return the view for each item in the list
-     */
+    //Return the view for each item in the list
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductsAdapter.ViewHolder {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.card_layout, parent, false)
         return ViewHolder(v)
     }
 
-    /**
-     * Bind the data on the list
-     */
+     //Bind the data on the list
     override fun onBindViewHolder(holder: ProductsAdapter.ViewHolder, position: Int) {
         holder.bindItems(products[holder.adapterPosition])
-
+        //On card click, check for matches and victory
         holder.itemView.setOnClickListener {
-            if (products[holder.adapterPosition].side == "back") {
+            if (products[holder.adapterPosition].side == "back" && canFlip) {
                 matches = (holder.itemView.context as MainActivity).matches
 
                 if (cardsFlipped == 0) {
@@ -51,17 +49,21 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
                 } else if (cardsFlipped == 1) {
                     pick2 = holder.adapterPosition
                     flipCardToFront(holder.itemView, products[holder.adapterPosition])
-
                     if (matches == 2) {
+                        canFlip = false
                         if (products[pick1].id == products[pick2].id) {
                             cardsFlipped = 0
                             Snackbar.make(holder.itemView, "Match Made!", Snackbar.LENGTH_SHORT).show()
                             matchesMade++
+                            canFlip = true
+                            score++
                             checkForWin(holder.itemView)
                         } else {
+                            score--
                             flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick1)?.itemView, products[pick1])
                             flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick2)?.itemView, products[pick2])
                         }
+                        (holder.itemView.context as MainActivity).scoreView.text = "Score :  $score"
                         pick1 = -1
                         pick2 = -1
                     }
@@ -70,16 +72,21 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
                     flipCardToFront(holder.itemView, products[holder.adapterPosition])
 
                     if (matches == 3) {
+                        canFlip = false
                         if (products[pick1].id == products[pick2].id && products[pick2].id == products[pick3].id) {
                             cardsFlipped = 0
                             Snackbar.make(holder.itemView, "Match Made!", Snackbar.LENGTH_SHORT).show()
                             matchesMade++
+                            canFlip = true
+                            score++
                             checkForWin(holder.itemView)
                         } else {
+                            score--
                             flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick1)?.itemView, products[pick1])
                             flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick2)?.itemView, products[pick2])
                             flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick3)?.itemView, products[pick3])
                         }
+                        (holder.itemView.context as MainActivity).scoreView.text = "Score :  $score"
                         pick1 = -1
                         pick2 = -1
                         pick3 = -1
@@ -87,18 +94,23 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
                 } else if (cardsFlipped == 3 && matches == 4) {
                     pick4 = holder.adapterPosition
                     flipCardToFront(holder.itemView, products[holder.adapterPosition])
+                    canFlip = false
 
                     if (products[pick1].id == products[pick2].id && products[pick2].id == products[pick3].id && products[pick3].id == products[pick4].id) {
                         cardsFlipped = 0
                         Snackbar.make(holder.itemView, "Match Made!", Snackbar.LENGTH_SHORT).show()
                         matchesMade++
+                        score++
+                        canFlip = true
                         checkForWin(holder.itemView)
                     } else {
+                        score--
                         flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick1)?.itemView, products[pick1])
                         flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick2)?.itemView, products[pick2])
                         flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick3)?.itemView, products[pick3])
                         flipCardToBack(recyclerView.findViewHolderForAdapterPosition(pick4)?.itemView, products[pick4])
                     }
+                    (holder.itemView.context as MainActivity).scoreView.text = "Score :  $score"
                     pick1 = -1
                     pick2 = -1
                     pick3 = -1
@@ -108,6 +120,7 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
         }
     }
 
+    //Reset for new board
     fun reset() {
         pick1 = -1
         pick2 = -1
@@ -115,15 +128,16 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
         pick4 = -1
         cardsFlipped = 0
         matchesMade = 0
+        score = 0
+        canFlip = true
     }
 
-    /**
-     * Return the size of the list
-     */
+    //Return the size of the list
     override fun getItemCount(): Int {
         return products.size
     }
 
+    //Flip card in given view to front
     fun flipCardToFront(view: View?, product: Product) {
         if (view != null) {
             val oa1 = ObjectAnimator.ofFloat(view, "scaleX", 1f, 0f)
@@ -147,6 +161,7 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
         cardsFlipped++
     }
 
+    //Flip card in given view to back
     fun flipCardToBack(view: View?, product: Product) {
         if (view != null) {
             val oa1 = ObjectAnimator.ofFloat(view, "scaleX", 1f, 0f)
@@ -162,33 +177,25 @@ class ProductsAdapter(val products: ArrayList<Product>, val recyclerView: Recycl
                     view.backImage.visibility = View.VISIBLE
                     view.title.visibility = View.GONE
                     view.image.visibility = View.GONE
+                    canFlip = true
                     oa2.start()
-                }
-            })
-            oa2.addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator?) {
-                    super.onAnimationEnd(animation)
-                    cardsFlipped--
                 }
             })
             oa1.startDelay = 1000
             oa1.start()
         }
-        else {
-            cardsFlipped--
-        }
+        cardsFlipped--
         product.side = "back"
     }
 
+    //Check for a win based on number of matched cards
     fun checkForWin(itemView : View) {
-        if (matchesMade == (itemView.context as MainActivity).cards/2) {
-            (itemView.context as MainActivity).ShowVictory()
+        if (matchesMade == (itemView.context as MainActivity).cards/matches) {
+            (itemView.context as MainActivity).ShowVictory(score)
         }
     }
 
-    /**
-     * Holds the custom list view
-     */
+     //Holds the custom list view
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
 
         fun bindItems(product: Product) {
